@@ -1,0 +1,37 @@
+# CODEOWNERS - Define code owners for pull request reviews
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Format: <pattern> <owners>
+# Owners are @username, @org/team, or email addresses
+#
+# These owners will be automatically requested for review when someone
+# opens a pull request that modifies code matching the pattern.
+
+# Default owners for everything in the repo
+# Update this with your team or individuals
+* @your-team
+
+# Security-sensitive files require security team review
+# Update @security-team with your security team or individuals
+.github/workflows/* @your-team @security-team
+.github/dependabot.yml @your-team @security-team
+.claude/ @your-team @security-team
+SECURITY.md @your-team @security-team
+.pre-commit-config.yaml @your-team @security-team
+
+# Infrastructure and CI/CD changes
+# Dockerfile* @your-team @infra-team
+# terraform/ @your-team @infra-team
+# .github/workflows/* @your-team @infra-team
+
+# Documentation
+# docs/ @your-team
+# *.md @your-team
+
+# ---
+# IMPORTANT: Update the team names above before using this template!
+# Remove the @your-team, @security-team placeholders and replace with:
+# - @crederauk/your-actual-team
+# - Individual usernames like @username
+# - Or remove sections that don't apply
+# ---

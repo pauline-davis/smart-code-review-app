@@ -1,0 +1,82 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  gitleaks:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  secrets-policy:
+    name: Secrets Policy Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for secrets in wrong locations
+        run: |
+          echo "Checking for secrets outside of /secrets/ directory..."
+
+          # Find .env files outside secrets/
+          ENV_FILES=$(find . -name ".env*" -not -path "./secrets/*" -not -path "./.git/*" 2>/dev/null || true)
+
+          if [ -n "$ENV_FILES" ]; then
+            echo "::error::Found .env files outside of /secrets/ directory:"
+            echo "$ENV_FILES"
+            echo ""
+            echo "Please move these files to the /secrets/ directory."
+            exit 1
+          fi
+
+          echo "No .env files found outside /secrets/ directory."
+
+      - name: Check for hardcoded credentials patterns
+        run: |
+          echo "Scanning for hardcoded credential patterns..."
+
+          # Patterns to check (excluding secrets/ and .git/)
+          PATTERNS=(
+            "password\s*=\s*['\"][^'\"]+['\"]"
+            "api_key\s*=\s*['\"][^'\"]+['\"]"
+            "secret\s*=\s*['\"][^'\"]+['\"]"
+            "token\s*=\s*['\"][A-Za-z0-9]{20,}['\"]"
+          )
+
+          FOUND=0
+          for pattern in "${PATTERNS[@]}"; do
+            MATCHES=$(grep -rniE "$pattern" --include="*.py" --include="*.js" --include="*.ts" --include="*.json" --include="*.yaml" --include="*.yml" . \
+              --exclude-dir=secrets --exclude-dir=.git --exclude-dir=node_modules 2>/dev/null || true)
+
+            if [ -n "$MATCHES" ]; then
+              echo "::warning::Potential hardcoded credentials found:"
+              echo "$MATCHES"
+              FOUND=1
+            fi
+          done
+
+          if [ $FOUND -eq 1 ]; then
+            echo ""
+            echo "::warning::Review the above findings. If these are real credentials, move them to /secrets/ or use environment variables."
+          else
+            echo "No obvious hardcoded credentials found."
+          fi

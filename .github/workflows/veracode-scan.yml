@@ -1,0 +1,83 @@
+name: Veracode Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# Note: Veracode requires the following secrets to be configured:
+# - VERACODE_API_ID: Your Veracode API ID
+# - VERACODE_API_KEY: Your Veracode API Key
+#
+# Configure these in GitHub Settings → Secrets and variables → Actions
+
+jobs:
+  veracode-sast:
+    name: Veracode SAST Scan
+    runs-on: ubuntu-latest
+    # Only run if Veracode credentials are configured
+    if: ${{ vars.VERACODE_ENABLED == 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package application
+        run: |
+          # Create a zip of the source code for scanning
+          # Exclude non-essential files to speed up scan
+          zip -r veracode-scan.zip . \
+            -x "*.git*" \
+            -x "node_modules/*" \
+            -x "__pycache__/*" \
+            -x "*.pyc" \
+            -x "secrets/*" \
+            -x ".env*" \
+            -x "*.log" \
+            -x "coverage/*" \
+            -x "dist/*" \
+            -x "build/*"
+
+      - name: Veracode Upload and Scan
+        uses: veracode/veracode-uploadandscan-action@master
+        with:
+          appname: ${{ github.repository }}
+          createprofile: true
+          filepath: veracode-scan.zip
+          vid: ${{ secrets.VERACODE_API_ID }}
+          vkey: ${{ secrets.VERACODE_API_KEY }}
+          # Fail on critical findings only
+          criticality: 'Critical'
+
+  veracode-sca:
+    name: Veracode SCA (Software Composition Analysis)
+    runs-on: ubuntu-latest
+    if: ${{ vars.VERACODE_ENABLED == 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Veracode SCA Scan
+        uses: veracode/veracode-sca@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          create-issues: true
+          fail-on-cvss: 9  # Only fail on critical (CVSS 9+)
+        env:
+          SRCCLR_API_TOKEN: ${{ secrets.SRCCLR_API_TOKEN }}
+
+  # Placeholder job when Veracode is not configured
+  veracode-skip:
+    name: Veracode (Not Configured)
+    runs-on: ubuntu-latest
+    if: ${{ vars.VERACODE_ENABLED != 'true' }}
+    steps:
+      - name: Skip Veracode
+        run: |
+          echo "::notice::Veracode scanning is not enabled for this repository."
+          echo "To enable Veracode scanning:"
+          echo "1. Add VERACODE_API_ID and VERACODE_API_KEY to repository secrets"
+          echo "2. Set repository variable VERACODE_ENABLED=true"
+          echo "3. (Optional) Add SRCCLR_API_TOKEN for SCA scanning"

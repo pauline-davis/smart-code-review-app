@@ -1,0 +1,137 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            
+      - name: Install dependencies
+        run: |
+          cd src/backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Run backend tests
+        run: |
+          cd src/backend
+          pytest tests/ -v --tb=short
+          
+      - name: Check Python syntax
+        run: |
+          cd src/backend
+          python -m py_compile app/main.py app/llm.py app/utils.py
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/frontend/package-lock.json
+          
+      - name: Install dependencies
+        run: |
+          cd src/frontend
+          npm ci
+          
+      - name: Run tests
+        run: |
+          cd src/frontend
+          npm test -- --run
+          
+      - name: Build for production
+        run: |
+          cd src/frontend
+          npm run build
+          
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: src/frontend/dist/
+          retention-days: 7
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for secrets in code
+        run: |
+          if grep -rE "(AZURE_OPENAI_API_KEY|api[_-]?key)\s*=\s*['\"][^'\"]+['\"]" src/ --include="*.py" --include="*.ts" --include="*.tsx"; then
+            echo "⚠️ Potential hardcoded secrets found!"
+            exit 1
+          else
+            echo "✅ No hardcoded secrets detected"
+          fi
+          
+      - name: Verify .env is gitignored
+        run: |
+          if git ls-files | grep -q "\.env$"; then
+            echo "⚠️ .env file is tracked in git!"
+            exit 1
+          else
+            echo "✅ .env file is properly gitignored"
+          fi
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Check Python formatting (Black recommended)
+        run: |
+          cd src/backend
+          echo "✅ Python formatting check (Black can be added)"
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Check TypeScript types
+        run: |
+          cd src/frontend
+          npm ci
+          npx tsc --noEmit

@@ -1,0 +1,107 @@
+name: Dependency Security Check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Run weekly on Monday at 9am
+    - cron: '0 9 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # Node.js dependency check
+  npm-audit:
+    name: NPM Audit
+    runs-on: ubuntu-latest
+    if: hashFiles('package-lock.json') != '' || hashFiles('yarn.lock') != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        continue-on-error: true
+
+      - name: Run npm audit
+        run: |
+          echo "Running npm audit..."
+          npm audit --audit-level=critical || {
+            echo "::error::Critical vulnerabilities found in npm dependencies"
+            exit 1
+          }
+          npm audit --audit-level=high || {
+            echo "::warning::High severity vulnerabilities found in npm dependencies"
+          }
+
+  # Python dependency check
+  pip-audit:
+    name: Pip Audit
+    runs-on: ubuntu-latest
+    if: hashFiles('requirements.txt') != '' || hashFiles('pyproject.toml') != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        run: |
+          echo "Running pip-audit..."
+          if [ -f "requirements.txt" ]; then
+            pip-audit -r requirements.txt --severity CRITICAL || {
+              echo "::error::Critical vulnerabilities found in Python dependencies"
+              exit 1
+            }
+            pip-audit -r requirements.txt --severity HIGH || {
+              echo "::warning::High severity vulnerabilities found in Python dependencies"
+            }
+          fi
+
+  # Trivy vulnerability scanner (multi-language)
+  trivy:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Fail on critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
