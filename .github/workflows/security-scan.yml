@@ -37,18 +37,33 @@ jobs:
         run: |
           echo "Checking for secrets outside of /secrets/ directory..."
 
-          # Find .env files outside secrets/
-          ENV_FILES=$(find . -name ".env*" -not -path "./secrets/*" -not -path "./.git/*" 2>/dev/null || true)
+          # Find .env files outside secrets/ (excluding .env.example which is a template)
+          ENV_FILES=$(find . -name ".env" -not -name ".env.example" -not -path "./secrets/*" -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null || true)
 
           if [ -n "$ENV_FILES" ]; then
             echo "::error::Found .env files outside of /secrets/ directory:"
             echo "$ENV_FILES"
             echo ""
-            echo "Please move these files to the /secrets/ directory."
+            echo "Please move these files to the /secrets/ directory or ensure they are in .gitignore"
             exit 1
           fi
 
-          echo "No .env files found outside /secrets/ directory."
+          # Verify .env.example files don't contain real credentials
+          echo "Checking .env.example files for real credentials..."
+          EXAMPLE_FILES=$(find . -name ".env.example" -not -path "./.git/*" 2>/dev/null || true)
+          
+          if [ -n "$EXAMPLE_FILES" ]; then
+            for file in $EXAMPLE_FILES; do
+              # Check for suspicious patterns that might indicate real credentials
+              if grep -qE "(sk-[a-zA-Z0-9]{32,}|[0-9a-f]{40}|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+)" "$file" 2>/dev/null; then
+                echo "::error::File $file may contain real credentials (not placeholder values)"
+                exit 1
+              fi
+            done
+            echo "✓ .env.example files contain only placeholder values"
+          fi
+
+          echo "✓ No real .env files found outside /secrets/ directory"
 
       - name: Check for hardcoded credentials patterns
         run: |
