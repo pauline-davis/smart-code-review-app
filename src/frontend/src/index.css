@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .font-vice {
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+  }
+}
