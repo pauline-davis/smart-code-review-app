@@ -1,0 +1,56 @@
+# Secrets and credentials
+secrets/*
+!secrets/.gitkeep
+.env
+.env.*
+!.env.example
+.env.local
+.envrc
+*.pem
+*.key
+credentials.json
+*.credential
+*.credentials
+
+# AWS
+.aws/
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.Python
+venv/
+.venv/
+env/
+ENV/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+.coverage
+htmlcov/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
