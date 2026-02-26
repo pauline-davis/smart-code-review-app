@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: aire-project-template
+  description: Project template for AI-assisted development with Claude Code and AWS Bedrock integration, including security patterns and CI/CD pipelines
+  tags:
+    - aire
+    - ai
+    - template
+    - aws-bedrock
+    - anthropic
+    - claude-code
+    - security
+    - ci-cd
+  annotations:
+    github.com/project-slug: crederauk/aire-project-template
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: https://github.com/crederauk/aire-project-template
+      title: GitHub Repository
+      icon: github
+    - url: https://github.com/crederauk/aire-ai-reference-for-engineering
+      title: AIRE Reference Architecture
+      icon: dashboard
+spec:
+  type: template
+  lifecycle: production
+  owner: team-platform-engineering

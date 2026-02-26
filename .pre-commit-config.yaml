@@ -1,0 +1,68 @@
+# Pre-commit hooks for security and code quality
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Gitleaks - Secret detection
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+
+  # Detect-secrets - Additional secret detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: secrets/.*
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # Prevent large files from being committed
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+
+      # Validate YAML files
+      - id: check-yaml
+        args: ['--unsafe']
+
+      # Validate JSON files
+      - id: check-json
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        exclude: secrets/.*
+
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: secrets/.*
+
+      # Prevent commits to main/master
+      - id: no-commit-to-branch
+        args: ['--branch', 'main', '--branch', 'master']
+
+      # Check for private keys
+      - id: detect-private-key
+
+  # Security-focused linting for Python (if applicable)
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml']
+        additional_dependencies: ['bandit[toml]']
+        files: \.py$
+        exclude: tests/.*
+
+# Default stages
+default_stages: [commit]
+
+# Skip hooks in CI (they run separately)
+ci:
+  skip: [gitleaks, detect-secrets, bandit]
