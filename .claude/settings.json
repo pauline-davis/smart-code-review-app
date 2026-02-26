@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./secrets/**)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.aws/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/credentials.json)",
+      "Read(.envrc)",
+      "Read(.secrets.baseline)"
+    ],
+    "ask": [
+      "Write(.github/workflows/**)",
+      "Edit(.github/workflows/**)",
+      "Write(.github/dependabot.yml)",
+      "Edit(.github/dependabot.yml)",
+      "Write(.github/CODEOWNERS)",
+      "Edit(.github/CODEOWNERS)",
+      "Write(.claude/settings.json)",
+      "Edit(.claude/settings.json)",
+      "Write(.pre-commit-config.yaml)",
+      "Edit(.pre-commit-config.yaml)",
+      "Write(SECURITY.md)",
+      "Edit(SECURITY.md)"
+    ]
+  }
+}
